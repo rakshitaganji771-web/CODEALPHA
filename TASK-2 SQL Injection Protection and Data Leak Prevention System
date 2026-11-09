@@ -1,0 +1,117 @@
+
+import os
+
+from datetime import datetime, timezone
+
+from sqlalchemy import (
+    create_engine,
+    Column,
+    Integer,
+    String,
+    Text,
+    DateTime,
+    select
+)
+
+from sqlalchemy.orm import (
+    declarative_base,
+    sessionmaker
+)
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "sqlite:///./secure_database.db"
+)
+
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False}
+    if DATABASE_URL.startswith("sqlite")
+    else {},
+    pool_pre_ping=True
+)
+
+SessionLocal = sessionmaker(
+    bind=engine,
+    autoflush=False,
+    expire_on_commit=False
+)
+
+Base = declarative_base()
+
+
+# ==========================================
+# USER DATABASE
+# ==========================================
+
+class User(Base):
+
+    __tablename__ = "users"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    username = Column(
+        String(100),
+        unique=True,
+        nullable=False,
+        index=True
+    )
+
+    password_hash = Column(
+        String(255),
+        nullable=False
+    )
+
+    encrypted_email = Column(
+        Text,
+        nullable=False
+    )
+
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc)
+    )
+
+
+# ==========================================
+# SECURITY AUDIT DATABASE
+# ==========================================
+
+class SecurityLog(Base):
+
+    __tablename__ = "security_logs"
+
+    id = Column(Integer, primary_key=True)
+
+    username = Column(String(100))
+
+    event = Column(String(255))
+
+    status = Column(String(50))
+
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc)
+    )
+
+
+Base.metadata.create_all(bind=engine)
+
+
+def get_db():
+
+    db = SessionLocal()
+
+    try:
+        yield db
+
+    finally:
+        db.close()
