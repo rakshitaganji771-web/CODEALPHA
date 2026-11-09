@@ -1,0 +1,77 @@
+
+import os
+import re
+import json
+import hashlib
+from difflib import SequenceMatcher
+from typing import Optional
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import (
+    create_engine,
+    Column,
+    Integer,
+    String,
+    Text,
+    DateTime,
+    UniqueConstraint,
+    select
+)
+from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.exc import IntegrityError
+from datetime import datetime, timezone
+from dotenv import load_dotenv
+
+
+# ==========================================
+# 1. CONFIGURATION
+# ==========================================
+
+load_dotenv()
+
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "sqlite:///./redundancy.db"
+)
+
+SIMILARITY_THRESHOLD = float(
+    os.getenv("SIMILARITY_THRESHOLD", "0.92")
+)
+
+if not 0 <= SIMILARITY_THRESHOLD <= 1:
+    raise ValueError("Similarity threshold must be between 0 and 1")
+
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False}
+    if DATABASE_URL.startswith("sqlite")
+    else {}
+)
+
+SessionLocal = sessionmaker(
+    bind=engine,
+    autoflush=False,
+    expire_on_commit=False
+)
+
+Base = declarative_base()
+
+app = FastAPI(
+    title="Data Redundancy Removal System",
+    description="Detects duplicate data and stores unique verified records.",
+    version="1.0.0"
+)
+
+
+# ==========================================
+# 2. DATABASE MODEL
+# ==========================================
+
+class DataRecord(Base):
+
+    __tablename__ = "data_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    title =
